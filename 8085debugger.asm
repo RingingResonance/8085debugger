@@ -14,7 +14,8 @@ hexwrite	EQU	textstart + 0x0052
 jump		EQU	textstart + 0x005C
 ioread		EQU	textstart + 0x0062
 iowrite		EQU	textstart + 0x006A
-memcheck	EQU	textstart + 0x0073
+mvstk   	EQU	textstart + 0x0073
+mvbas   	EQU	textstart + 0x007A
 BadSyn      EQU textstart + 0x0082
 ImIn		EQU	textstart + 0x0091
 ucmd		EQU	textstart + 0x00BF
@@ -33,14 +34,14 @@ dlits		EQU	0xF0	;8 bit diag light output address.
 romSt		EQU	0x0000	;ROM start address
 romEnd		EQU	0x0800	;ROM end address. 2K ROM chip; no need to test before that.
 ;# Memory map. These get added to the 'found block' start address
-autobd		EQU	0x0000
-mendL		EQU	0x0001	;Memory block end address lower nibble
-mendH		EQU	0x0002	;Memory block end address upper nibble
-rdL         EQU 0x0003
-rdH         EQU 0x0004
-dio         EQU 0x0005
-dioadr      EQU 0x0006
-dioret      EQU 0x0007
+autobd		EQU	0x0000  ;autobaud setting
+mendL		EQU	0x0001	;Memory block end address lower byte
+mendH		EQU	0x0002	;Memory block end address upper byte
+rdL         EQU 0x0003  ;read lower byte
+rdH         EQU 0x0004  ;read upper byte
+dio         EQU 0x0005  ;data IO
+dioadr      EQU 0x0006  ;data IO address
+dioret      EQU 0x0007  ;data IO return address
 wrhx1       EQU 0x0008
 wrhx2       EQU 0x0009
 cmdstrt		EQU	0x000A	;Command Storage start address.
@@ -52,7 +53,7 @@ bitpat		EQU	0xAA	;Bit pattern to test memory with.
 memstrt		EQU	0x0801	;Memory test start location. We are using a 2K ROM chip so start after.
 
 ;#########################################################################################################
-; Start by testing memory for read/write capeability without using the stack as we don't have a place for it yet.
+; Start by testing memory for read/write capability without using the stack as we don't have a place for it yet.
 org 0x0000
 Azero:	mvi  a,0x0F	;Disable IRQs
  	sim
@@ -154,6 +155,7 @@ Merr:	jmp  Azero	;If we have a failure try again so that the CPU keeps running d
 ;#########################################################################################################################
 ;## We have a home, now we should be able to use memory and stack operations but carefully as we may not have much ram. ##
 newhm:	SPHL		;HL should be at the top of our memory space, load the stack pointer to that location.
+;BC should be our beginning address at this point.
 
 ;##################################################
 ;# Load serial port timing variable with defaults.
@@ -236,7 +238,6 @@ enter:	mov  a,l	;check to see if anything was typed. If not then go back to prom
 	lxi  h,newln	;Print newline when enter/return is pressed.
 	call print
 	pop  h
-	jmp  cmdint
 
 bkspc:	mov  a,l	;Get address (stored in HL) of command array
  	cmp  c		;If it matches with BC then we have backspaced all the way
@@ -319,6 +320,45 @@ cmdint:	mov  h,b	;Put the HL reg back to start of prompt array.
  	cpi 0x02	;If cmdcmp returned a 2 then it wasn't a match. Move on to the next command to test.
  	jnz wrIO	;Print IO specified by user.
 
+;## jump command
+	mov  h,b	;Put the HL reg back to start of prompt array.
+	mov  l,c
+	push b		;Push BC onto the stack.
+	push d		;Push DE onto the stack.
+	lxi d,jump	;############## Location of text to compare to. ################
+	call cmdcmp
+	mov a,b
+	pop d		;Pop DE off the stack.
+	pop b		;Pop BC off the stack.
+ 	cpi 0x02	;If cmdcmp returned a 2 then it wasn't a match. Move on to the next command to test.
+ 	jnz usrjmp	;Jump execution to user specified address.
+
+;## mvstk Move Stack command
+	mov  h,b	;Put the HL reg back to start of prompt array.
+	mov  l,c
+	push b		;Push BC onto the stack.
+	push d		;Push DE onto the stack.
+	lxi d,mvstk	;############## Location of text to compare to. ################
+	call cmdcmp
+	mov a,b
+	pop d		;Pop DE off the stack.
+	pop b		;Pop BC off the stack.
+ 	cpi 0x02	;If cmdcmp returned a 2 then it wasn't a match. Move on to the next command to test.
+ 	jnz mvstack
+
+;## mvbas Move Base command
+	mov  h,b	;Put the HL reg back to start of prompt array.
+	mov  l,c
+	push b		;Push BC onto the stack.
+	push d		;Push DE onto the stack.
+	lxi d,mvstk	;############## Location of text to compare to. ################
+	call cmdcmp
+	mov a,b
+	pop d		;Pop DE off the stack.
+	pop b		;Pop BC off the stack.
+ 	cpi 0x02	;If cmdcmp returned a 2 then it wasn't a match. Move on to the next command to test.
+ 	jnz mvbase
+
 ;Unknown Command
 	lxi  h,ucmd	;Print "Unknown Command"
 	call print
@@ -351,6 +391,52 @@ done:	mvi b,0x04	;RETURN 4	match found
 ;What our commands do go here.
 
 ;####
+;mvbas
+mvbase: mov  h,b ;First index HL to beginning of command array after the command.
+    mov  l,c
+    lxi  b,0x0006   ;How many chars is the command?
+    dad  b
+    call glong  ;Get address data from args, returns them in HL
+    mov  b,h    ;Move HL to BC, this should be our new beginning address.
+    mov  c,l
+    ;now get the old end address since we aren't changing it.
+    lxi  h,mendH	;Load address index to HL
+	dad  d		;Add BC to HL
+	mov  d,m	;Do the data transfer.
+	lxi  h,mendL	;Load address index to HL
+	dad  d		;Add BC to HL
+	mov  e,m	;Do the data transfer.
+    mov  h,d    ;Move DE to HL, this is where our old end address should be stored.
+    mov  l,e
+    jmp  newhm  ;Restart main program.
+
+;####
+;mvstk
+mvstack: mov  h,b ;First index HL to beginning of command array after the command.
+    mov  l,c
+    lxi  b,0x0006   ;How many chars is the command?
+    dad  b
+    call glong  ;Get address data from args, returns them in HL
+    mov  h,b    ;Move BC to HL
+    mov  l,c
+    mov  b,d    ;Move DE to BC, this is where our beginning address should be stored.
+    mov  c,e
+    jmp  newhm  ;Restart main program.
+
+;####
+;jump
+usrjmp: mov  h,b ;First index HL to beginning of command array after the command.
+    mov  l,c
+    lxi  b,0x0005   ;How many chars is the command?
+    dad  b
+    call glong  ;Get address data from args, returns them in HL
+    mov  h,b    ;Move BC to HL
+    mov  l,c
+    pchl        ;Move HL to program counter. AKA: Indirect Jump
+    nop         ;NOP buffer.
+    nop
+
+;#### "ioread"
 ;Read IO address specified by user
 rdIO: push b
     push d
@@ -557,15 +643,12 @@ ptHL:  mov  a,h
 	ret
 
 ;# Gets address range data from args and returns them in HL and rdL + rdH.
-adget: call hget   ;Get hex data from command args.
-	mov  b,a
-	call hget
-	mov  c,a
+adget: call glong
 	inx  h      ;Space between the two addresses
 	call hget
 	push h
 	lxi  h,rdH
-	dad  d
+	dad  d      ;add HL to the offset stored in DE
 	mov  m,a
 	pop  h
 	call hget
@@ -576,10 +659,14 @@ adget: call hget   ;Get hex data from command args.
 	mov  l,c
 	ret
 
+glong: call hget   ;Get long data from command arg. returns it in BC
+	mov  b,a
+	call hget
+	mov  c,a
+	ret
 ;Gets what ever two chars are pointed to by HL, converts them to data, and
 ;returns it in A
 hget:   push b
-        push d
         mvi  a,0x00
         call geth
         rlc
@@ -591,7 +678,6 @@ hget:   push b
         call geth
         ora  b
         inx  h
-        pop  d
         pop  b
         ret
 
@@ -628,7 +714,6 @@ derr:   lxi  h,BadSyn
 
 ;prints what ever is in the A reg in HEX out the serial port
 printh:	push b
-	push d
 	mov  b,a	;Make a copy of A into the D reg.
 	ani  0xF0	;AND A and 0xF0
 	rlc		;Move the 4 remaining bits to the right.
@@ -641,7 +726,6 @@ printh:	push b
 	ani  0x0F
 	call parsv	;Pars the result and put in in C
 	call tx
-	pop  d
 	pop  b
 	ret
 

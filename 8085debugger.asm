@@ -217,6 +217,7 @@ prompt:	lxi  h,prmt	;print command promt stuff "NL + RET + '#:' "
 	mov  b,h        ;BC is used to compare to HL to see how much was typed if anything was typed.
     mov  c,l
 
+;###################################################################
 ;This is our command/Text input subroutine.
 ;No protection from keeping someone from typing until
 ;the program overwrites the stack!

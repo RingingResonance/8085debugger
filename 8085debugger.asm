@@ -23,7 +23,7 @@ prmt		EQU	textstart + 0x00D2
 bkspce		EQU	textstart + 0x00D7
 newln		EQU	textstart + 0x00BC
 inprmt      EQU textstart + 0x00B9
-hex         EQU textstart + 0x007E
+hex         EQU textstart + 0x00DB
 
 ;########################
 ;# IO space
@@ -33,7 +33,7 @@ dlits		EQU	0xF0	;8 bit diag light output address.
 ;# Memory
 romSt		EQU	0x0000	;ROM start address
 romEnd		EQU	0x0800	;ROM end address. 2K ROM chip; no need to test before that.
-;# Memory map. These get added to the 'found block' start address
+;# Dynamic Memory map. These get added to the 'found block' start address
 autobd		EQU	0x0000  ;autobaud setting
 mendL		EQU	0x0001	;Memory block end address lower byte
 mendH		EQU	0x0002	;Memory block end address upper byte
@@ -90,7 +90,7 @@ org 0x0044		;Leave space for text.
 	nop
 	nop
 
-org 0x011F
+org 0x0123
 irqskp:	mov a,l		;move L to A
 	cpi 0xFF	;compare it to 0xFF
 	jnz tstn2	;if not zero then jump
@@ -239,6 +239,7 @@ enter:	mov  a,l	;check to see if anything was typed. If not then go back to prom
 	lxi  h,newln	;Print newline when enter/return is pressed.
 	call print
 	pop  h
+	jmp  cmdint
 
 bkspc:	mov  a,l	;Get address (stored in HL) of command array
  	cmp  c		;If it matches with BC then we have backspaced all the way
@@ -352,7 +353,7 @@ cmdint:	mov  h,b	;Put the HL reg back to start of prompt array.
 	mov  l,c
 	push b		;Push BC onto the stack.
 	push d		;Push DE onto the stack.
-	lxi d,mvstk	;############## Location of text to compare to. ################
+	lxi d,mvbas	;############## Location of text to compare to. ################
 	call cmdcmp
 	mov a,b
 	pop d		;Pop DE off the stack.
@@ -397,18 +398,20 @@ mvbase: mov  h,b ;First index HL to beginning of command array after the command
     mov  l,c
     lxi  b,0x0006   ;How many chars is the command?
     dad  b
-    call glong  ;Get address data from args, returns them in HL
-    mov  b,h    ;Move HL to BC, this should be our new beginning address.
-    mov  c,l
+    call glong  ;Get address data from args, returns them in BC
+    push b
     ;now get the old end address since we aren't changing it.
     lxi  h,mendH	;Load address index to HL
 	dad  d		;Add BC to HL
-	mov  d,m	;Do the data transfer.
+	mov  b,m	;Do the data transfer.
 	lxi  h,mendL	;Load address index to HL
 	dad  d		;Add BC to HL
-	mov  e,m	;Do the data transfer.
-    mov  h,d    ;Move DE to HL, this is where our old end address should be stored.
-    mov  l,e
+	mov  c,m	;Do the data transfer.
+    mov  h,b    ;Move DE to HL, this is where our old end address should be stored.
+    mov  l,c
+    mov  d,b    ;Also copy it to DE
+    mov  e,c
+    pop  b
     jmp  newhm  ;Restart main program.
 
 ;####
@@ -417,11 +420,13 @@ mvstack: mov  h,b ;First index HL to beginning of command array after the comman
     mov  l,c
     lxi  b,0x0006   ;How many chars is the command?
     dad  b
-    call glong  ;Get address data from args, returns them in HL
+    call glong  ;Get address data from args, returns them in BC
     mov  h,b    ;Move BC to HL
     mov  l,c
     mov  b,d    ;Move DE to BC, this is where our beginning address should be stored.
     mov  c,e
+    mov  d,h    ;Move HL to DE, this is where our end address should be stored.
+    mov  e,l
     jmp  newhm  ;Restart main program.
 
 ;####

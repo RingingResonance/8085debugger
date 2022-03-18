@@ -19,10 +19,10 @@ mvbas   	EQU	textstart + 0x007A
 BadSyn      EQU textstart + 0x0082
 ImIn		EQU	textstart + 0x0091
 ucmd		EQU	textstart + 0x00BF
-prmt		EQU	textstart + 0x00D2
-bkspce		EQU	textstart + 0x00D7
 newln		EQU	textstart + 0x00BC
 inprmt      EQU textstart + 0x00B9
+prmt		EQU	textstart + 0x00D2
+bkspce		EQU	textstart + 0x00D7
 hex         EQU textstart + 0x00DB
 
 ;########################

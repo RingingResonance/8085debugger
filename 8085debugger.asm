@@ -213,8 +213,8 @@ newhm:	SPHL		;HL should be at the top of our memory space, load the stack pointe
 prompt:	lxi  h,prmt	;print command promt stuff "NL + RET + '#:' "
 	call print
 	lxi  h,cmdstrt
-	dad  b
-	mov  b,h        ;BC is used to compare to HL to see how much was typed if anything was typed.
+	dad  d          ;DE should still be our base address.
+	mov  b,h        ;From now on, BC is used to compare to HL to see how much was typed if anything was typed.
     mov  c,l
 
 ;###################################################################
@@ -227,19 +227,19 @@ mn:	call rx		;Loops in this sub waiting for a key press
  	jz   bkspc	;Check for Backspace.
 	cpi  0x0D
  	jz   enter	;Check for Enter.
-	mov  a,m
- 	call tx		;Echo what we typed.
+	mov  a,m    ;Echo not what has been typed, but what has been stored in memory.
+ 	call tx		;Now send it.
  	inx  h		;Key entered, move to next memory location.
  	jmp  mn		;Loop again.
 
 enter:	mov  a,l	;check to see if anything was typed. If not then go back to prompt.
- 	cmp  c
+ 	cmp  c          ;This is crude as if the correct amount of data is entered it won't catch this.
 	jz   prompt
 	push h
 	lxi  h,newln	;Print newline when enter/return is pressed.
 	call print
 	pop  h
-	jmp  cmdint
+	jmp  cmdint     ;Jump to command interpreter.
 
 bkspc:	mov  a,l	;Get address (stored in HL) of command array
  	cmp  c		;If it matches with BC then we have backspaced all the way

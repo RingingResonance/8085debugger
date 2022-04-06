@@ -1,0 +1,9 @@
+Detect and fix minor bugs. <- Always a problem.
+
+Add feature to allow for auto or manual detection of other serial IO for terminal interface.
+
+Allow for compatability with a wide range of serial IO perifrials.
+
+Add ability to easily use custom routines for serial IO on a different ROM chip, or code loaded in RAM.
+
+Add memory test and burn in tests. <- Trying to keep it under 2KB so that it only requires 1 ROM chip.

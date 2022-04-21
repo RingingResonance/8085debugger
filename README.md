@@ -39,3 +39,20 @@ The base is where a few variables and the command input array are stored. It cou
 The stack, as stated before, starts at the top of the found memory space and counts down.
 
 I made both the base and stack starting memory locations moveable so that the user can write data to that memory space safely without overwriting the base or the stack.
+
+On startup, the program will check for 0x76 at location 0x0801. If found it will jump to location 0x0802.
+
+In addtion to the second rom bootloader, the program also looks for 0x76 at locations 0x0805 and 0x0809 for external TX and RX routines to be used instead of the default software serial port in order to support other CPUs, and
+
+systems which may have DMA interfear with critical serial port timing. On finding 0x76 at one or both of those locations, the routine will jump to 0x0806 for TX, or 0x080A for RX.
+
+The 8085's IRQs have also been broken out to the second ROM if needed. Enough room is left for a single jump instruction.
+
+TRAP at 0x080D
+
+5.5  at 0x0810
+
+6.5  at 0x0813
+
+7.5  at 0x0816
+

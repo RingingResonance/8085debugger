@@ -33,6 +33,13 @@ dlits		EQU	0xF0	;8 bit diag light output address.
 ;# Memory
 romSt		EQU	0x0000	;ROM start address
 romEnd		EQU	0x0800	;ROM end address. 2K ROM chip; no need to test before that.
+secROM      EQU romEnd + 0x01   ;Start location of next rom to try and boot from. Looks for a 0x76 here, and jumps to the address just after.
+exTX        EQU romEnd + 0x05   ;External TX routine. Looks for a 0x76 here, and jumps to the address just after.
+exRX        EQU romEnd + 0x09   ;External RX routine. Looks for a 0x76 here, and jumps to the address just after.
+irqT        EQU romEnd + 0x0D   ;Trap IRQ vector
+irq5        EQU romEnd + 0x10   ;RST5.5 IRQ vector
+irq6        EQU romEnd + 0x13   ;RST6.5 IRQ vector
+irq7        EQU romEnd + 0x16   ;RST7.5 IRQ vector
 ;# Dynamic Memory map. These get added to the 'found block' start address
 autobd		EQU	0x0000  ;autobaud setting
 mendL		EQU	0x0001	;Memory block end address lower byte
@@ -50,7 +57,7 @@ cmdstrt		EQU	0x000A	;Command Storage start address.
 ;# Constants
 baudf		EQU	0x47	;0x35 for 2400 at 6 mhz, 0x47 for 1200 at 4mhz, 0x6D for 1200 at 6.144mhz
 bitpat		EQU	0xAA	;Bit pattern to test memory with.
-memstrt		EQU	0x0801	;Memory test start location. We are using a 2K ROM chip so start after.
+memstrt		EQU	romEnd + 0x01	;Memory test start location. We are using a 2K ROM chip so start after.
 
 ;#########################################################################################################
 ; Start by testing memory for read/write capability without using the stack as we don't have a place for it yet.
@@ -157,8 +164,24 @@ Merr:	jmp  Azero	;If we have a failure try again so that the CPU keeps running d
 newhm:	SPHL		;HL should be at the top of our memory space, load the stack pointer to that location.
 ;BC should be our beginning address at this point.
 
+;Boot loader check. Look for second rom to boot from that starts with 0x00.
+    push b          ;Push them all onto the stack.
+    push d
+    push h
+    lxi  h,secROM   ;Looking at this memory location.
+    mov  a,m        ;Move that to A for comparison.
+    cpi  0x76       ;Look for 0x76 at address 0x0801 indicating that a boot rom is present. 0x76 has a low chance of just being there unless it was deliberately put there.
+    jz   secROM + 0x01 ;jump to second rom if it was found.
+    nop             ;pattern of nop's in case the creator of the boot rom wants to jump back this address is easy to find.
+    nop
+    pop  h          ;if no rom found, continue on as normal.
+    pop  d
+    pop  b
+    nop             ;pattern of nop's in case the creator of the boot rom wants to jump back this address is easy to find.
+    nop
+    nop
 ;##################################################
-;# Load serial port timing variable with defaults.
+;# Load serial port timing variable with defaults
 	lxi  h,autobd	;Load address index to HL
 	dad  b		;Add BC to HL to point to actual memory location.
 	mvi  m,baudf	;Load default variable into that memory address.
@@ -176,12 +199,20 @@ newhm:	SPHL		;HL should be at the top of our memory space, load the stack pointe
 ;# Print some text with default serial port timing variables
 ;# to let the user know we are ready for serial input
 ;# so that we can calculate new timing variables.
+;External serial port routine check.
+    nop             ;nop pattern to make it easier to find and edit the hex.
+    lxi  h,exRX     ;Looking at this memory location.
+    mov  a,m        ;Move that to A for comparison.
+    cpi  0x76       ;Look for 0x76 indicating that an external routine is present.
+    jz   wlcm       ;If found, skip the auto baud detection.
+    nop
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
     lxi  h,inprmt	;The word "in"
 	call print	;Print it even though the timing might be way off and only garbage gets through.
     call gtime  ;Get timing of serial port from user.
 
 ;# Print welcome text.
-	lxi  h,ImIn	;Point to 1337 HAX0R T3XT
+wlcm: lxi  h,ImIn	;Point to 1337 HAX0R T3XT
 	call print	;Print some 1337 HAX0R T3XT
 ;#### Print memory space ####
 ;Print the range of the block of ram we found.
@@ -790,6 +821,14 @@ hbt: mov a,e
 rx:	push b
 	push d
 	push h
+;External serial port routine check.
+    nop             ;nop pattern to make it easier to find and edit the hex.
+    lxi  h,exTX     ;Looking at this memory location.
+    mov  a,m        ;Move that to A for comparison.
+    cpi  0x76       ;Look for 0x76 indicating that an external routine is present.
+    jz   exTX + 0x01   ;jump to external routine if it was found.
+    nop
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 rx2:	rim		;Loop until we get a start bit.
 	ora a
 	jm rx2
@@ -818,6 +857,14 @@ tx:	push b
 	push psw
 	push h
 	mov b,a
+;External serial port routine check.
+    nop             ;nop pattern to make it easier to find and edit the hex.
+    lxi  h,exTX     ;Looking at this memory location.
+    mov  a,m        ;Move that to A for comparison.
+    cpi  0x76       ;Look for 0x76 indicating that an external routine is present.
+    jz   exTX + 0x01   ;jump to external routine if it was found.
+    nop
+;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 	mvi a,0xCF
  	sim
  	call fulbit
@@ -895,21 +942,5 @@ tdl: dcr d      ;10
     jnz  tdl    ;7/10
     pop d
     ret     ;10
-
-irqT:	mvi a,0xEE
-	out  dlits
-	ret
-
-irq5:	mvi a,0x55
-	out  dlits
-	ret
-
-irq6:	mvi a,0x65
-	out  dlits
-	ret
-
-irq7:	mvi a,0x75
-	out  dlits
-	ret
 
 	hlt

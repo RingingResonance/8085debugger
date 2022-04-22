@@ -8,7 +8,7 @@ On initial startup the program will attempt to send the string "in!" out the ser
 If it can't find a place in ram to work with it will continue to loop looking for memory so that the circuit can be probed. Once it has found enough memory, and the user has given it a baud rate by entering at least one character,
 it will show it's welcome text along with the memory space it has found: xxxx - xxxx
 
-By default, this memory space is the upper and lower addresses that the base and stack are stored. On moving the base or stack and a restart the program will reflect these, however this will not limit the user from using the old memory addresses.
+By default, this memory space is the upper and lower addresses that the base and stack are stored. On moving the base or stack, and a soft restart, the program will reflect these changes to the configuration, however this will not limit the user from using the original memory addresses range.
 
 Once it is ready for user input you must send a capital letter such as 'A' in order for the auto baud to function properly. Failure to do so will result in it recording the incorrect baud rate.
 

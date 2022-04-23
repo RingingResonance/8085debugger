@@ -32,7 +32,7 @@ dlits		EQU	0xF0	;8 bit diag light output address.
 ;########################
 ;# Memory
 romSt		EQU	0x0000	;ROM start address
-romEnd		EQU	0x0800	;ROM end address. 2K ROM chip; no need to test before that.
+romEnd		EQU	0x07FF	;ROM end address. 2K ROM chip; no need to test before that.
 secROM      EQU romEnd + 0x01   ;Start location of next rom to try and boot from. Looks for a 0x76 here, and jumps to the address just after.
 exTX        EQU romEnd + 0x05   ;External TX routine. Looks for a 0x76 here, and jumps to the address just after.
 exRX        EQU romEnd + 0x09   ;External RX routine. Looks for a 0x76 here, and jumps to the address just after.

@@ -823,10 +823,10 @@ rx:	push b
 	push h
 ;External serial port routine check.
     nop             ;nop pattern to make it easier to find and edit the hex.
-    lxi  h,exTX     ;Looking at this memory location.
+    lxi  h,exRX     ;Looking at this memory location.
     mov  a,m        ;Move that to A for comparison.
     cpi  0x76       ;Look for 0x76 indicating that an external routine is present.
-    jz   exTX + 0x01   ;jump to external routine if it was found.
+    jz   exRX + 0x01   ;jump to external routine if it was found.
     nop
 ;$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 rx2:	rim		;Loop until we get a start bit.

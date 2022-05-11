@@ -56,3 +56,6 @@ TRAP at 0x080C
 
 7.5  at 0x0815
 
+Example for the DT80's built in serial port at 9600 8N1 and an initializer that loads text into ram from a third 2K rom chip.
+
+https://github.com/RingingResonance/DT80-Stuff/tree/master/InitRom

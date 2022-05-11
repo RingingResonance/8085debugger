@@ -48,6 +48,8 @@ On finding 0x76 at one or both of those locations, the routine will jump to 0x08
 
 The 8085's IRQs have also been broken out to the second ROM if needed. Enough room is left for a single jump instruction for all bootloader/initialization, RX/TX, and IRQ code along with their '0x76' identifiers.
 
+The IRQ's don't use a 0x76 identifier. Just place a jump instruction at those locations.
+
 TRAP at 0x080C
 
 5.5  at 0x080F

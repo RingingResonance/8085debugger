@@ -651,9 +651,11 @@ nxtmem: pop h
 	inx  h
 	jmp  rdnxt
 
-nxtcol:	mvi  b,0x01
+;Formatting system. B is number of bytes per column. C is number of columns.
+;HL is address to be read from or written to.
+nxtcol:	mvi  b,0x00
 	inr  c
-	mvi  a,0x20	;Double space between collums.
+	mvi  a,0x20	;Double space between columns.
 	call tx
 	ret
 
@@ -662,7 +664,9 @@ nxtln:	lxi  b,0x0101
 	lxi  h,newln
 	call print
 	pop  h
+	inx  h
 	call ptHL   ;Print start address of new line.
+	dcx  h
 	ret
 
 ;######################################################################
